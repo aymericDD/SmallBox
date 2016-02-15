@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "SmallBox", "SmallBox\SmallBox.ccproj", "{CCCA6C87-A461-4F25-A199-A01B34BA50A7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WCFServiceWebRole1", "WCFServiceWebRole1\WCFServiceWebRole1.csproj", "{F858B074-C924-4A9B-B91D-E39F95F767F1}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B03E4A13-14EF-4279-89C0-F7DD6E8878A3} = {B03E4A13-14EF-4279-89C0-F7DD6E8878A3}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkerRole1", "WorkerRole1\WorkerRole1.csproj", "{B03E4A13-14EF-4279-89C0-F7DD6E8878A3}"
 EndProject

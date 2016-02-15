@@ -16,25 +16,35 @@ namespace WCFServiceWebRole1
     {
 
         [OperationContract]
-        [WebGet(ResponseFormat = WebMessageFormat.Json)]
+        [WebGet(    ResponseFormat = WebMessageFormat.Json)]
         List<String> ListFolders();
 
         [OperationContract]
-        [WebGet(UriTemplate = "ListByFolder?folder={folder}", ResponseFormat = WebMessageFormat.Json)]
-        List<String> ListByFolder(string folder);
+        [WebGet(    UriTemplate = "ListAllByFolder?folder={folder}", 
+                    ResponseFormat = WebMessageFormat.Json)]
+        List<String> ListAllByFolder(string folder);
+        
+        [OperationContract]
+        [WebGet(    UriTemplate = "ListFilesByFolder?folder={folder}", 
+                    ResponseFormat = WebMessageFormat.Json)]
+        List<String> ListFilesByFolder(string folder);
+
+        [OperationContract]
+        [WebGet(    UriTemplate = "ListDirectoriesByFolder?folder={folder}",
+                    ResponseFormat = WebMessageFormat.Json)]
+        List<String> ListDirectoriesByFolder(string folder);
 
         [OperationContract]
         [WebInvoke( Method = "POST", 
-                    ResponseFormat = WebMessageFormat.Json, 
-                    UriTemplate = "Upload/{path}")]
+                    UriTemplate = "Upload/{path}", 
+                    ResponseFormat = WebMessageFormat.Json)]
         Boolean Upload(String path, Stream  uploading);
-        // TODO: ajoutez vos opérations de service ici
+
+        [OperationContract]
+        [WebGet(    UriTemplate = "GetFile?folder={folder}&file={file}",
+                    ResponseFormat = WebMessageFormat.Json)]
+        Stream GetFile(string folder, string file);
+
     }
 
-
-    // Utilisez un contrat de données comme indiqué dans l'exemple ci-après pour ajouter les types composites aux opérations de service.
-    [DataContract]
-    public class CompositeType
-    {
-    }
 }

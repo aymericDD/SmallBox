@@ -18,44 +18,39 @@ namespace WCFServiceWebRole1.Classes
 
         public byte[] FileContents { get; private set; }
 
-        public ParserFile(Stream stream)
-        {
-            this.Parse(stream);
-        }
-
-        protected void Parse(Stream stream)
+        public void Parse(Stream stream)
         {
             Encoding encoding = Encoding.UTF8;
 
-            // Read the stream into a byte array
-            byte[] data = ToByteArray(stream);
+            // Convert stream to byte array
+            byte[] data = StreamToByteArray(stream);
 
-            // Copy to a string for header parsing
+            // Convert byte array to string
             string content = encoding.GetString(data);
 
-            // The first line should contain the delimiter
-            int delimiterEndIndex = content.IndexOf("\r\n");
+            // Get first line delimiter
+            int delimitIndex = content.IndexOf("\r\n");
 
-            if (delimiterEndIndex > -1)
+            if (delimitIndex > -1)
             {
                 string delimiter = content.Substring(0, content.IndexOf("\r\n"));
 
-                // Look for Content-Type
+                // Get Content-Type
                 Regex re = new Regex(@"(?<=Content\-Type:)(.*?)(?=\r\n\r\n)");
                 Match contentTypeMatch = re.Match(content);
 
-                // Look for filename
+                // Get filename
                 re = new Regex(@"(?<=filename\=\"")(.*?)(?=\"")");
                 Match filenameMatch = re.Match(content);
 
-                // Did we find the required values?
+                // If all regex matchs
                 if (contentTypeMatch.Success && filenameMatch.Success)
                 {
-                   
+                    // Set properties fileName and fileType
                     this.FileType = contentTypeMatch.Value.Trim();
                     this.FileName = filenameMatch.Value.Trim();
 
-                    // Get the start & end indexes of the file contents
+                    // Get the start and the end indexes contents file
                     int startIndex = contentTypeMatch.Index + contentTypeMatch.Length + "\r\n\r\n".Length;
 
                     byte[] delimiterBytes = encoding.GetBytes("\r\n" + delimiter);
@@ -108,7 +103,7 @@ namespace WCFServiceWebRole1.Classes
             return -1;
         }
 
-        private byte[] ToByteArray(Stream stream)
+        private byte[] StreamToByteArray(Stream stream)
         {
             byte[] buffer = new byte[32768];
             using (MemoryStream ms = new MemoryStream())
