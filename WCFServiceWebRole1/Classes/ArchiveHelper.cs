@@ -1,14 +1,11 @@
 ﻿using Microsoft.WindowsAzure.Storage.Blob;
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Web;
 
 namespace WCFServiceWebRole1.Classes
 {
-    class ArchiveFile
+    class ArchiveHelper
     {
         /// <summary>
         /// Save CloudBlobDirectory in temp folder
@@ -36,6 +33,38 @@ namespace WCFServiceWebRole1.Classes
             {
                 this.tempDirectory(initialPath, b);
             }
+        }
+
+        /// <summary>
+        /// Save folder in blob
+        /// </summary>
+        /// <param name="directory"></param>
+        /// <param name="directoryBlob"></param>
+        public void saveFolder(string directory, CloudBlobDirectory directoryBlob)
+        {
+            string directoryName = Path.GetFileName(directory);
+
+            directoryBlob = directoryBlob.GetDirectoryReference(directoryName);
+
+            string[] filePaths = Directory.GetFiles(directory);
+
+            string[] directoryPaths = Directory.GetDirectories(directory);
+
+            foreach (var filePath in filePaths)
+            {
+                CloudBlockBlob blockBlob = directoryBlob.GetBlockBlobReference(Path.GetFileName(filePath));
+
+                blockBlob.Properties.ContentType = MimeMapping.GetMimeMapping(Path.GetFileName(filePath));
+
+                // Save file into block blob
+                blockBlob.UploadFromFile(filePath, FileMode.Open);
+            }
+
+            foreach (string dir in directoryPaths)
+            {
+                this.saveFolder(dir, directoryBlob);
+            }
+
         }
 
     }

@@ -7,6 +7,7 @@ using System.ServiceModel;
 using System.IO;
 using WCFServiceWebRole1.Classes;
 using System.IO.Compression;
+using System.Web;
 
 namespace WCFServiceWebRole1
 {
@@ -18,7 +19,7 @@ namespace WCFServiceWebRole1
         private CloudBlobClient blobClient;
         private CloudBlobContainer rootContainer;
         private DownloadFile downloadFile;
-        private ArchiveFile archiveFile;
+        private ArchiveHelper archiveHelper;
 
         /// <summary>
         /// Constructor
@@ -34,7 +35,7 @@ namespace WCFServiceWebRole1
             
             this.downloadFile = new DownloadFile(this.rootContainer);
 
-            this.archiveFile = new ArchiveFile();
+            this.archiveHelper = new ArchiveHelper();
         }
         
         /// <summary>
@@ -125,35 +126,64 @@ namespace WCFServiceWebRole1
 
                 if (parserFIle.Success)
                 {
-                    try
-                    {
-                        // Create temp file
-                        string tempFile = Path.GetTempPath() + parserFIle.FileName;
+                    // Create temp file
+                    string tempFile = Path.GetTempPath() + parserFIle.FileName;
 
-                        // Write content stream in temp file
-                        using (System.IO.FileStream output = new System.IO.FileStream(tempFile, FileMode.Create))
+                    string fileName = parserFIle.FileName;
+
+                    string fileType = parserFIle.FileType;
+                    
+                    // Write content stream in temp file
+                    using (System.IO.FileStream output = new System.IO.FileStream(tempFile, FileMode.Create))
+                    {
+                        output.Write(parserFIle.FileContents, 0, parserFIle.FileContents.Count());
+                    }
+
+                    // Create block blob
+                    CloudBlobDirectory directoryBlob = this.rootContainer
+                                .GetDirectoryReference(path);
+
+
+                    if (parserFIle.FileType.Equals("application/x-zip-compressed"))
+                    {
+                        string directoryName = fileName.Replace(".zip", "");
+
+                        string directoryTemp = Path.GetTempPath() + "/" + directoryName;
+
+                        ZipFile.ExtractToDirectory(tempFile, directoryTemp);
+
+                        string[] filePaths = Directory.GetFiles(directoryTemp);
+
+                        string[] directoryPaths = Directory.GetDirectories(directoryTemp);
+
+                        foreach (var filePath in filePaths)
                         {
-                            output.Write(parserFIle.FileContents, 0, parserFIle.FileContents.Count());
+                            CloudBlockBlob blockBlob = directoryBlob.GetBlockBlobReference(Path.GetFileName(filePath));
+
+                            blockBlob.Properties.ContentType = MimeMapping.GetMimeMapping(Path.GetFileName(filePath));
+
+                            // Save file into block blob
+                            blockBlob.UploadFromFile(filePath, FileMode.Open);
                         }
 
-                        // Create block blob
-                        CloudBlockBlob blockBlob = this.rootContainer
-                                    .GetDirectoryReference(path)
-                                    .GetBlockBlobReference(parserFIle.FileName);
+                        foreach (string dir in directoryPaths)
+                        {
+                            this.archiveHelper.saveFolder(dir, directoryBlob);
+                        }
+
+                    } else {
+
+                        CloudBlockBlob blockBlob = directoryBlob.GetBlockBlobReference(fileName);
 
                         // Set block blob content type
-                        blockBlob.Properties.ContentType = parserFIle.FileType;
+                        blockBlob.Properties.ContentType = fileType;
 
                         // Save file into block blob
                         blockBlob.UploadFromFile(tempFile, FileMode.Open);
+                    }
 
-                        // Return success save
-                        return true;
-                    }
-                    catch (Exception)
-                    {
-                        return false;
-                    }
+                    // Return success save
+                    return true;
                 }
             }
             return false;
@@ -182,6 +212,7 @@ namespace WCFServiceWebRole1
                 // Get directory
                 CloudBlobDirectory directory = this.rootContainer.GetDirectoryReference(folder);
                 
+                // If directory is empty return false
                 if (directory.ListBlobs().Count() <= 0)
                 {
                     return false;
@@ -194,7 +225,7 @@ namespace WCFServiceWebRole1
                 string path = Path.GetTempPath();
 
                 // Save CloudBlobDirectory into temp directoy
-                this.archiveFile.tempDirectory(path, directory);
+                this.archiveHelper.tempDirectory(path, directory);
 
                 // Zip directory if it exist
                 if (!File.Exists(zipPath))
@@ -206,6 +237,8 @@ namespace WCFServiceWebRole1
                 CloudBlockBlob blobZip = this.rootContainer
                                                     .GetDirectoryReference("archives")
                                                     .GetBlockBlobReference(zipName);
+                // Set zip property
+                blobZip.Properties.ContentType = "application/x-zip-compressed";
 
                 // Save content
                 blobZip.UploadFromFile(zipPath, FileMode.Open);

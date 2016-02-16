@@ -100,7 +100,7 @@
     <Content Include="Service1.svc" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Classes\ArchiveFile.cs" />
+    <Compile Include="Classes\ArchiveHelper.cs" />
     <Compile Include="Classes\DownloadFile.cs" />
     <Compile Include="Classes\ParserFile.cs" />
     <Compile Include="Service1.svc.cs">

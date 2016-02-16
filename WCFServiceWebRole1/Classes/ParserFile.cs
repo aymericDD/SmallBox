@@ -14,6 +14,8 @@ namespace WCFServiceWebRole1.Classes
 
         public string FileType { get; private set; }
 
+        public byte[] FileOriginal { get; private set; }
+
         public Boolean Success { get; private set; }
 
         public byte[] FileContents { get; private set; }
@@ -24,6 +26,8 @@ namespace WCFServiceWebRole1.Classes
 
             // Convert stream to byte array
             byte[] data = StreamToByteArray(stream);
+
+            this.FileOriginal = data;
 
             // Convert byte array to string
             string content = encoding.GetString(data);
