@@ -36,7 +36,7 @@ namespace WCFServiceWebRole1
 
         [OperationContract]
         [WebInvoke( Method = "POST", 
-                    UriTemplate = "Upload/{path}", 
+                    UriTemplate = "Upload?path={path}", 
                     ResponseFormat = WebMessageFormat.Json)]
         Boolean Upload(String path, Stream  uploading);
 
@@ -44,6 +44,11 @@ namespace WCFServiceWebRole1
         [WebGet(    UriTemplate = "GetFile?folder={folder}&file={file}",
                     ResponseFormat = WebMessageFormat.Json)]
         Stream GetFile(string folder, string file);
+
+        [OperationContract]
+        [WebGet(    UriTemplate= "ArchiveDirectory?folder={folder}",
+                    ResponseFormat = WebMessageFormat.Json)]
+        Boolean ArchiveDirectory(string folder);
 
     }
 

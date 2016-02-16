@@ -1,15 +1,12 @@
-﻿using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.Storage;
+﻿using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.ServiceModel;
-using System.ServiceModel.Web;
-using System.Text;
 using System.IO;
 using WCFServiceWebRole1.Classes;
+using System.IO.Compression;
 
 namespace WCFServiceWebRole1
 {
@@ -21,6 +18,7 @@ namespace WCFServiceWebRole1
         private CloudBlobClient blobClient;
         private CloudBlobContainer rootContainer;
         private DownloadFile downloadFile;
+        private ArchiveFile archiveFile;
 
         /// <summary>
         /// Constructor
@@ -35,6 +33,8 @@ namespace WCFServiceWebRole1
             this.rootContainer = blobClient.GetContainerReference("smallbox");
             
             this.downloadFile = new DownloadFile(this.rootContainer);
+
+            this.archiveFile = new ArchiveFile();
         }
         
         /// <summary>
@@ -64,6 +64,7 @@ namespace WCFServiceWebRole1
                                     .Concat(listFiles)
                                     .Concat(listDirectories)
                                     .ToList();
+            
         }
 
         /// <summary>
@@ -109,9 +110,15 @@ namespace WCFServiceWebRole1
                             .ToList();                                          // Convert to list and return result
         }
 
+        /// <summary>
+        /// Upload file in a specified folder
+        /// </summary>
+        /// <param name="path">Fodler</param>
+        /// <param name="stream">Filder</param>
+        /// <returns>True if created else false</returns>
         public bool Upload(string path, Stream stream)
         {
-            if (path.Length >= 1)
+            if (path != null && path.Length >= 1)
             {
                 ParserFile parserFIle = new ParserFile();
                 parserFIle.Parse(stream);
@@ -155,13 +162,61 @@ namespace WCFServiceWebRole1
         /// <summary>
         /// Get file by path and file name
         /// </summary>
-        /// <param name="folder"></param>
-        /// <param name="file"></param>
-        /// <returns></returns>
+        /// <param name="folder">Folder where find file</param>
+        /// <param name="file">File to download</param>
+        /// <returns>Stream file</returns>
         public Stream GetFile(string folder, string file)
         {
             return this.downloadFile.GetStreamFile(folder, file);
         }
+
+        /// <summary>
+        /// Archive directory
+        /// </summary>
+        /// <param name="folder"></param>
+        /// <returns>Ture if archived else false</returns>
+        public bool ArchiveDirectory(string folder)
+        {
+            try
+            {
+                // Get directory
+                CloudBlobDirectory directory = this.rootContainer.GetDirectoryReference(folder);
+                
+                if (directory.ListBlobs().Count() <= 0)
+                {
+                    return false;
+                }
+
+                // Init paths
+                string zipName = directory.Prefix + ".zip";
+                zipName = zipName.Replace("/", "");
+                string zipPath = Path.GetTempPath() + zipName;
+                string path = Path.GetTempPath();
+
+                // Save CloudBlobDirectory into temp directoy
+                this.archiveFile.tempDirectory(path, directory);
+
+                // Zip directory if it exist
+                if (!File.Exists(zipPath))
+                {
+                    ZipFile.CreateFromDirectory(path + "/" + directory.Prefix, zipPath);
+                }
+
+                // Create archive directory if does not exist and create blob zip
+                CloudBlockBlob blobZip = this.rootContainer
+                                                    .GetDirectoryReference("archives")
+                                                    .GetBlockBlobReference(zipName);
+
+                // Save content
+                blobZip.UploadFromFile(zipPath, FileMode.Open);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+            return true;
+        }
+        
     }
 }
  

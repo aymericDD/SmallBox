@@ -1,14 +1,13 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.Diagnostics;
 using Microsoft.WindowsAzure.ServiceRuntime;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+using System.IO;
+using System.IO.Compression;
 
 namespace WorkerRole1
 {
@@ -63,8 +62,66 @@ namespace WorkerRole1
             // TODO: Remplacez le texte suivant par votre propre logique.
             while (!cancellationToken.IsCancellationRequested)
             {
-                Trace.TraceInformation("Working");
-                await Task.Delay(1000);
+                // Connect with development account.
+                CloudStorageAccount storageAccount = CloudStorageAccount.DevelopmentStorageAccount;
+                // Create the blob client.
+                CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+                // Retrieve a reference to smallbox container.
+                CloudBlobContainer rootContainer = blobClient.GetContainerReference("smallbox");
+                
+                string backupName = "backup";
+                string backupZipName = "backup.zip";
+                string path = Path.GetTempPath() + "/" + backupName;
+                string zipPath = Path.GetTempPath() + "/" + backupZipName;
+
+                Directory.CreateDirectory(path);
+
+                foreach (CloudBlockBlob b in rootContainer.ListBlobs().Where(b => b as CloudBlockBlob != null).ToList())
+                {
+                    string filePath = (path + "/" + Path.GetFileName(b.Name));
+                    b.DownloadToFile(filePath, FileMode.Create);
+                }
+
+                foreach (CloudBlobDirectory b in rootContainer.ListBlobs().Where(b => b as CloudBlobDirectory != null).ToList())
+                {
+                    this.tempDirectory(path, b);
+                }
+
+                CloudBlockBlob blobBackup = rootContainer
+                                                    .GetDirectoryReference("backups")
+                                                    .GetBlockBlobReference(backupName);
+
+                // Zip directory if it exist
+                if (!File.Exists(zipPath))
+                {
+                    ZipFile.CreateFromDirectory(path, zipPath);
+                }
+
+                blobBackup.UploadFromFile(zipPath, FileMode.Open);
+
+                await Task.Delay(60000);
+            }
+        }
+
+        private void tempDirectory(string path, CloudBlobDirectory blobDirectory)
+        {   
+            string initialPath = path;
+            path = path + "/" + blobDirectory.Prefix;
+            Directory.CreateDirectory(path);
+
+            if (!blobDirectory.Prefix.Equals("backups/"))
+            {
+                foreach (CloudBlockBlob b in blobDirectory.ListBlobs().Where(b => b as CloudBlockBlob != null).ToList())
+                {
+                    string filePath = (path + "/" + Path.GetFileName(b.Name));
+                    b.DownloadToFile(filePath, FileMode.Create);
+                }
+
+            }
+
+            foreach (CloudBlobDirectory b in blobDirectory.ListBlobs().Where(b => b as CloudBlobDirectory != null).ToList())
+            {
+                this.tempDirectory(initialPath, b);
             }
         }
     }
