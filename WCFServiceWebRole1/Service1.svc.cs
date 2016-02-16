@@ -8,6 +8,7 @@ using System.IO;
 using WCFServiceWebRole1.Classes;
 using System.IO.Compression;
 using System.Web;
+using System.Text.RegularExpressions;
 
 namespace WCFServiceWebRole1
 {
@@ -119,71 +120,78 @@ namespace WCFServiceWebRole1
         /// <returns>True if created else false</returns>
         public bool Upload(string path, Stream stream)
         {
-            if (path != null && path.Length >= 1)
+            if (path != null && path.Length >= 1 && new Regex(@"^\w+$").IsMatch(path))
             {
-                ParserFile parserFIle = new ParserFile();
-                parserFIle.Parse(stream);
-
-                if (parserFIle.Success)
+                try
                 {
-                    // Create temp file
-                    string tempFile = Path.GetTempPath() + parserFIle.FileName;
+                    ParserFile parserFIle = new ParserFile();
+                    parserFIle.Parse(stream);
 
-                    string fileName = parserFIle.FileName;
-
-                    string fileType = parserFIle.FileType;
-                    
-                    // Write content stream in temp file
-                    using (System.IO.FileStream output = new System.IO.FileStream(tempFile, FileMode.Create))
+                    if (parserFIle.Success)
                     {
-                        output.Write(parserFIle.FileContents, 0, parserFIle.FileContents.Count());
-                    }
+                        // Create temp file
+                        string tempFile = Path.GetTempPath() + parserFIle.FileName;
 
-                    // Create block blob
-                    CloudBlobDirectory directoryBlob = this.rootContainer
-                                .GetDirectoryReference(path);
+                        string fileName = parserFIle.FileName;
 
+                        string fileType = parserFIle.FileType;
 
-                    if (parserFIle.FileType.Equals("application/x-zip-compressed"))
-                    {
-                        string directoryName = fileName.Replace(".zip", "");
-
-                        string directoryTemp = Path.GetTempPath() + "/" + directoryName;
-
-                        ZipFile.ExtractToDirectory(tempFile, directoryTemp);
-
-                        string[] filePaths = Directory.GetFiles(directoryTemp);
-
-                        string[] directoryPaths = Directory.GetDirectories(directoryTemp);
-
-                        foreach (var filePath in filePaths)
+                        // Write content stream in temp file
+                        using (System.IO.FileStream output = new System.IO.FileStream(tempFile, FileMode.Create))
                         {
-                            CloudBlockBlob blockBlob = directoryBlob.GetBlockBlobReference(Path.GetFileName(filePath));
+                            output.Write(parserFIle.FileContents, 0, parserFIle.FileContents.Count());
+                        }
 
-                            blockBlob.Properties.ContentType = MimeMapping.GetMimeMapping(Path.GetFileName(filePath));
+                        // Create block blob
+                        CloudBlobDirectory directoryBlob = this.rootContainer
+                                    .GetDirectoryReference(path);
+
+
+                        if (parserFIle.FileType.Equals("application/x-zip-compressed"))
+                        {
+                            string directoryName = fileName.Replace(".zip", "");
+
+                            string directoryTemp = Path.GetTempPath() + "/" + directoryName;
+
+                            ZipFile.ExtractToDirectory(tempFile, directoryTemp);
+
+                            string[] filePaths = Directory.GetFiles(directoryTemp);
+
+                            string[] directoryPaths = Directory.GetDirectories(directoryTemp);
+
+                            foreach (var filePath in filePaths)
+                            {
+                                CloudBlockBlob blockBlob = directoryBlob.GetBlockBlobReference(Path.GetFileName(filePath));
+
+                                blockBlob.Properties.ContentType = MimeMapping.GetMimeMapping(Path.GetFileName(filePath));
+
+                                // Save file into block blob
+                                blockBlob.UploadFromFile(filePath, FileMode.Open);
+                            }
+
+                            foreach (string dir in directoryPaths)
+                            {
+                                this.archiveHelper.saveFolder(dir, directoryBlob);
+                            }
+
+                        }
+                        else {
+
+                            CloudBlockBlob blockBlob = directoryBlob.GetBlockBlobReference(fileName);
+
+                            // Set block blob content type
+                            blockBlob.Properties.ContentType = fileType;
 
                             // Save file into block blob
-                            blockBlob.UploadFromFile(filePath, FileMode.Open);
+                            blockBlob.UploadFromFile(tempFile, FileMode.Open);
                         }
-
-                        foreach (string dir in directoryPaths)
-                        {
-                            this.archiveHelper.saveFolder(dir, directoryBlob);
-                        }
-
-                    } else {
-
-                        CloudBlockBlob blockBlob = directoryBlob.GetBlockBlobReference(fileName);
-
-                        // Set block blob content type
-                        blockBlob.Properties.ContentType = fileType;
-
-                        // Save file into block blob
-                        blockBlob.UploadFromFile(tempFile, FileMode.Open);
+                        // Return success save
+                        return true;
                     }
-
-                    // Return success save
-                    return true;
+                }
+                catch (Exception)
+                {
+                    return false;
                 }
             }
             return false;
