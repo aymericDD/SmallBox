@@ -33,9 +33,11 @@ namespace WCFServiceWebRole1
             this.blobClient = storageAccount.CreateCloudBlobClient();
             // Retrieve a reference to smallbox container.
             this.rootContainer = blobClient.GetContainerReference("smallbox");
+            // Create blob if not exist
+            this.rootContainer.CreateIfNotExists();
             
+            // Utils
             this.downloadFile = new DownloadFile(this.rootContainer);
-
             this.archiveHelper = new ArchiveHelper();
         }
         

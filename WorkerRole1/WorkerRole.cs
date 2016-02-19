@@ -70,6 +70,8 @@ namespace WorkerRole1
                 // Retrieve a reference to smallbox container.
                 CloudBlobContainer rootContainer = blobClient.GetContainerReference("smallbox");
 
+                rootContainer.CreateIfNotExists();
+
                 // Init path variables
                 string backupName = "backup" + DateTime.Now.ToString("yyyyMMddHHmmssffff");
                 string backupZipName = "backup" + DateTime.Now.ToString("yyyyMMddHHmmssffff") + ".zip";
